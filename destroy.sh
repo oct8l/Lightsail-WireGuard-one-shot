@@ -31,11 +31,11 @@ rm -rf clients/
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 
 printf "\e[0m\e[1mIf you no longer need the Python packages, you can uninstall them with:\e[0m\n\n"
-printf "\e[33mpip uninstall -r \"%s/requirements.txt\" -y\e[0m\n\n" "${SCRIPT_DIR}"
+printf "\e[33mpip uninstall -r \"${SCRIPT_DIR}/requirements.txt\" -y\e[0m\n\n"
 
 printf "\e[0m\e[1mIf you no longer need the Ansible roles and collections, you can uninstall them with:\e[0m\n\n"
 printf "\e[33m"
-echo "grep 'name:' \"%s/ansible/requirements.yml\" | awk '{print \$3}' | sed 's/\\r\$//' | xargs -I {} ansible-galaxy remove {}" "${SCRIPT_DIR}"
+echo "grep 'name:' \"${SCRIPT_DIR}/requirements.yml\" | awk '{print \$3}' | sed 's/\\r\$//' | xargs -I {} ansible-galaxy remove {}"
 printf "\e[0m\n\n"
 ####################################################################
 

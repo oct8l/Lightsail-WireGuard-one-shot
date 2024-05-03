@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 #############################################################################################
 # Assume the Inventory file is always unchanged so there isn't always a change to commit ####
 #### This definitely can be improved because I think you can specify an IP address ##########
@@ -88,5 +86,3 @@ sed -i "s@\[User\sPrivate\sKey\]@$PRIVKEY3@" clients/wg-host/full-tunnel3.conf
 #################################################################################
 
 printf "\nALL DONE\n\n"
-
-set +x
