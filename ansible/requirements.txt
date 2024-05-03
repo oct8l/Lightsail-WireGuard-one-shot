@@ -1,0 +1,2 @@
+jmespath>=0.10.0
+netaddr>=0.7.19

@@ -1,0 +1,8 @@
+[Interface]
+Address = 10.{{ hostvars['localhost'].random_octets }}.1/24
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ wireguard_out_interface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ wireguard_out_interface }} -j MASQUERADE
+ListenPort = 51280
+MTU = 1420
+SaveConfig = true
+PrivateKey = {{ configkey.content | b64decode }}

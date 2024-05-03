@@ -1,0 +1,10 @@
+export AWS_DEFAULT_REGION="us-east-1"
+
+export PUBKEY1="<public key 1 here in quotes>"
+export PRIVKEY1="<private key 1 here in quotes>"
+
+export PUBKEY2="<public key 2 here in quotes>"
+export PRIVKEY2="<private key 2 here in quotes>"
+
+export PUBKEY3="<public key 3 here in quotes>"
+export PRIVKEY3="<private key 3 here in quotes>"

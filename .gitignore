@@ -1,0 +1,41 @@
+#### All direnv files ####
+*.envrc
+
+#### Wireguard configs ####
+ansible/clients*
+
+#### Generated SSH keys ####
+id_rsa
+id_rsa.pub
+
+#### Ansible retry files ####
+*.retry
+
+#### Terraform ####
+# Local .terraform directories
+terraform/**/.terraform/*
+
+# .tfstate files
+terraform/*.tfstate
+terraform/*.tfstate.*
+
+# Terraform plans
+*.tfplan
+*.tfplan.*
+
+# Local Terraform variable files
+terraform.tfvars
+terraform.tfvars.json
+
+# Terraform plugin directory
+terraform/plugins
+
+# Ignore override files as they are usually used to override resources locally
+# and so are not checked in
+terraform/override.tf
+terraform/override.tf.json
+terraform/*_override.tf
+terraform/*_override.tf.json
+
+# Project-specific includes
+!terraform/.terraform.lock.hcl
