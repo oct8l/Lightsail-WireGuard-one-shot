@@ -1,1 +1,1 @@
-wg-host ansible_ssh_host=3.22.98.55
+wg-host ansible_ssh_host=169.254.100.200
