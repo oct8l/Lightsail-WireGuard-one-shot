@@ -16,7 +16,7 @@ jobs:
   validate-terraform:
     name: Validate Terraform Files
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.9.0"
+          terraform_version: "1.13.3"
 
       - name: Terraform Format Check
         id: fmt
