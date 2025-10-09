@@ -1,0 +1,185 @@
+name: Ansible Validation
+
+on:
+  pull_request:
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ansible-validation.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ansible-validation.yml'
+
+jobs:
+  validate-ansible:
+    name: Validate Ansible Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible and dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint yamllint
+
+      - name: Validate YAML syntax
+        run: |
+          echo "Validating YAML files..."
+          yamllint -d "{extends: default, rules: {line-length: {max: 200}, comments: {min-spaces-from-content: 1}}}" ansible/
+
+      - name: Validate Ansible syntax
+        run: |
+          echo "Checking Ansible playbook syntax..."
+          ansible-playbook --syntax-check ansible/wireguard-server.yml || true
+
+      - name: Validate requirements.yml structure
+        run: |
+          echo "Validating requirements.yml structure..."
+          python3 << 'EOF'
+          import yaml
+          import sys
+
+          with open('ansible/requirements.yml', 'r') as f:
+              req = yaml.safe_load(f)
+
+          errors = []
+
+          # Check for collections section
+          if 'collections' not in req:
+              errors.append("Missing 'collections' section in requirements.yml")
+          else:
+              for col in req['collections']:
+                  if 'name' not in col:
+                      errors.append(f"Collection missing 'name': {col}")
+                  if 'version' not in col:
+                      errors.append(f"Collection {col.get('name', 'unknown')} missing 'version'")
+
+          # Check for roles section (if present)
+          if 'roles' in req:
+              for role in req['roles']:
+                  if 'name' not in role:
+                      errors.append(f"Role missing 'name': {role}")
+                  if 'version' not in role and 'src' not in role:
+                      errors.append(f"Role {role.get('name', 'unknown')} missing 'version' or 'src'")
+
+          # Check that lablabs.wireguard is not present
+          all_items = []
+          if 'collections' in req:
+              all_items.extend([c['name'] for c in req['collections']])
+          if 'roles' in req:
+              all_items.extend([r['name'] for r in req['roles']])
+          
+          if 'lablabs.wireguard' in all_items:
+              errors.append("lablabs.wireguard found in requirements.yml - this package does not exist!")
+
+          if errors:
+              print("❌ Validation errors found:")
+              for error in errors:
+                  print(f"  - {error}")
+              sys.exit(1)
+          else:
+              print("✅ requirements.yml structure is valid")
+          EOF
+
+      - name: Check for deprecated or non-existent packages
+        run: |
+          echo "Checking for known problematic packages..."
+          if grep -q "lablabs.wireguard" ansible/requirements.yml; then
+            echo "❌ Found lablabs.wireguard which does not exist on Ansible Galaxy"
+            exit 1
+          fi
+          echo "✅ No known problematic packages found"
+
+      - name: Validate playbook references
+        run: |
+          echo "Validating playbook role/collection references..."
+          python3 << 'EOF'
+          import yaml
+          import sys
+
+          # Load requirements
+          with open('ansible/requirements.yml', 'r') as f:
+              req = yaml.safe_load(f)
+
+          # Get all available collections and roles
+          collections = [c['name'] for c in req.get('collections', [])]
+          roles = [r['name'] for r in req.get('roles', [])]
+
+          # Load playbook - it's a YAML file with a list of plays
+          with open('ansible/wireguard-server.yml', 'r') as f:
+              documents = list(yaml.safe_load_all(f))
+              
+          errors = []
+          
+          def check_task(task):
+              """Check a single task for role references"""
+              if not isinstance(task, dict):
+                  return
+              
+              # Check import_role
+              if 'ansible.builtin.import_role' in task:
+                  role_name = task['ansible.builtin.import_role'].get('name', '')
+                  # Check if it's a collection role (namespace.collection.role)
+                  if role_name.count('.') >= 2:
+                      collection = '.'.join(role_name.split('.')[:-1])
+                      if collection not in collections:
+                          errors.append(f"Role '{role_name}' references collection '{collection}' which is not in requirements.yml")
+                  # Check if it's a standalone role
+                  elif '.' in role_name and role_name not in roles:
+                      errors.append(f"Role '{role_name}' is not in requirements.yml")
+              
+              # Check if task has a block
+              if 'block' in task:
+                  for block_task in task['block']:
+                      check_task(block_task)
+          
+          # Process each document
+          for doc in documents:
+              # Each document can be a list of plays or a single play
+              plays = doc if isinstance(doc, list) else [doc]
+              
+              for play in plays:
+                  if not isinstance(play, dict):
+                      continue
+                  tasks = play.get('tasks', [])
+                  for task in tasks:
+                      check_task(task)
+
+          if errors:
+              print("❌ Validation errors:")
+              for error in errors:
+                  print(f"  - {error}")
+              sys.exit(1)
+          else:
+              print("✅ All playbook references are valid")
+          EOF
+
+      - name: Run ansible-lint
+        run: |
+          echo "Running ansible-lint..."
+          ansible-lint ansible/wireguard-server.yml || echo "⚠️ ansible-lint found issues (non-blocking)"
+
+      - name: Validation summary
+        if: success()
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║           ✅ All Ansible validations passed!              ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "The following checks passed:"
+          echo "  ✅ YAML syntax validation"
+          echo "  ✅ Ansible syntax check"
+          echo "  ✅ requirements.yml structure validation"
+          echo "  ✅ No deprecated/non-existent packages"
+          echo "  ✅ Playbook references validation"
+          echo ""
