@@ -50,7 +50,7 @@
         until: apt_output is succeeded
         retries: 30
         delay: 15
-        ignore_errors: yes
+        ignore_errors: true
       - debug: var=apt_output.stdout_lines
 
       - name: Check if reboot required
@@ -75,7 +75,7 @@
         until: autoremove_result is succeeded
         retries: 20
         delay: 10
-        ignore_errors: yes
+        ignore_errors: true
 
       - name: Remove useless packages from the cache
         ansible.builtin.apt:
@@ -84,7 +84,7 @@
         until: autoclean_result is succeeded
         retries: 20
         delay: 10
-        ignore_errors: yes
+        ignore_errors: true
 
       - name: Harden SSHD
         ansible.builtin.import_role:
