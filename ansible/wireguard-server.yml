@@ -36,9 +36,9 @@
 
   tasks:
 
-  - name: Perform steps on host
-    when: ansible_facts['os_family'] == 'Debian'
-    block:
+    - name: Perform steps on host
+      when: ansible_facts['os_family'] == 'Debian'
+      block:
 
       - name: Update cache and upgrade all packages on Debian server
         ansible.builtin.apt:
