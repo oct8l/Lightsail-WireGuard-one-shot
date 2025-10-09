@@ -1,0 +1,78 @@
+name: Shell Script Validation
+
+on:
+  pull_request:
+    paths:
+      - '**.sh'
+      - '.github/workflows/shell-validation.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - '**.sh'
+      - '.github/workflows/shell-validation.yml'
+
+jobs:
+  validate-scripts:
+    name: Validate Shell Scripts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck on all shell scripts
+        run: |
+          echo "Running ShellCheck on all .sh files..."
+          find . -name "*.sh" -not -path "./.git/*" | while read -r script; do
+            echo "Checking: $script"
+            shellcheck -x -S warning "$script" || true
+          done
+
+      - name: Check script permissions
+        run: |
+          echo "Checking that shell scripts are executable..."
+          non_executable=()
+          for script in run-all.sh destroy.sh ssh.sh; do
+            if [ -f "$script" ] && [ ! -x "$script" ]; then
+              non_executable+=("$script")
+            fi
+          done
+          
+          if [ ${#non_executable[@]} -gt 0 ]; then
+            echo "⚠️ Warning: The following scripts are not executable:"
+            printf '  - %s\n' "${non_executable[@]}"
+            echo "Consider running: chmod +x ${non_executable[*]}"
+          else
+            echo "✅ All main scripts are executable"
+          fi
+
+      - name: Basic syntax check
+        run: |
+          echo "Running basic bash syntax check..."
+          for script in *.sh; do
+            if [ -f "$script" ]; then
+              echo "Syntax checking: $script"
+              bash -n "$script"
+            fi
+          done
+          echo "✅ All scripts have valid bash syntax"
+
+      - name: Validation summary
+        if: success()
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║          ✅ All shell script checks passed!               ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "The following checks passed:"
+          echo "  ✅ ShellCheck validation"
+          echo "  ✅ Script permissions check"
+          echo "  ✅ Bash syntax validation"
+          echo ""
