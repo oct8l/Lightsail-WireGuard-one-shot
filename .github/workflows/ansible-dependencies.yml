@@ -1,0 +1,113 @@
+name: Ansible Dependencies Test
+
+on:
+  pull_request:
+    paths:
+      - "ansible/requirements.yml"
+      - ".github/workflows/ansible-dependencies.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "ansible/requirements.yml"
+      - ".github/workflows/ansible-dependencies.yml"
+
+jobs:
+  test-dependencies:
+    name: Test Ansible Dependencies Installation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+
+      - name: Display requirements.yml
+        run: |
+          echo "Contents of requirements.yml:"
+          cat ansible/requirements.yml
+
+      - name: Install Ansible collections
+        run: |
+          echo "Installing Ansible collections..."
+          ansible-galaxy collection install -r ansible/requirements.yml -vvv
+
+      - name: Install Ansible roles
+        run: |
+          echo "Installing Ansible roles..."
+          ansible-galaxy role install -r ansible/requirements.yml -vvv
+        continue-on-error: false
+
+      - name: List installed collections
+        run: |
+          echo "Installed collections:"
+          ansible-galaxy collection list
+
+      - name: List installed roles
+        run: |
+          echo "Installed roles:"
+          ansible-galaxy role list
+
+      - name: Verify each dependency exists
+        run: |
+          python3 << 'EOF'
+          import yaml
+          import subprocess
+          import sys
+
+          with open('ansible/requirements.yml', 'r') as f:
+              req = yaml.safe_load(f)
+
+          errors = []
+
+          if 'collections' in req:
+              print("Verifying collections...")
+              for col in req['collections']:
+                  name = col['name']
+                  print(f"  Checking {name}...")
+                  result = subprocess.run(
+                      ['ansible-galaxy', 'collection', 'list', name],
+                      capture_output=True,
+                      text=True
+                  )
+                  if result.returncode != 0 or name not in result.stdout:
+                      errors.append(f"Collection {name} not found after installation")
+
+          if 'roles' in req:
+              print("Verifying roles...")
+              for role in req['roles']:
+                  name = role['name']
+                  print(f"  Checking {name}...")
+                  result = subprocess.run(
+                      ['ansible-galaxy', 'role', 'list'],
+                      capture_output=True,
+                      text=True
+                  )
+                  if name not in result.stdout:
+                      errors.append(f"Role {name} not found after installation")
+
+          if errors:
+              print("\n❌ Verification errors:")
+              for error in errors:
+                  print(f"  - {error}")
+              sys.exit(1)
+          else:
+              print("\n✅ All dependencies verified successfully")
+          EOF
+
+      - name: Test summary
+        if: success()
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║      ✅ All dependencies installed successfully!          ║"
+          echo "╚════════════════════════════════════════════════════════════╝"

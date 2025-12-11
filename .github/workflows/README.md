@@ -15,11 +15,40 @@ Validates Ansible playbooks and configuration files.
 - ✅ YAML syntax validation with `yamllint`
 - ✅ Ansible playbook syntax check
 - ✅ `requirements.yml` structure validation
-- ✅ Detection of non-existent or deprecated packages (e.g., `lablabs.wireguard`)
 - ✅ Validation that all role/collection references in playbooks exist in `requirements.yml`
 - ✅ `ansible-lint` checks (non-blocking)
 
-### 2. Terraform Validation (`terraform-validation.yml`)
+### 2. Ansible Dependencies Test (`ansible-dependencies.yml`)
+Tests that all Ansible dependencies can be successfully installed.
+
+**Triggered on:**
+- Pull requests that modify `ansible/requirements.yml`
+- Pushes to `main` branch that modify `ansible/requirements.yml`
+
+**Checks performed:**
+- ✅ Installation of all collections from `requirements.yml`
+- ✅ Installation of all roles from `requirements.yml`
+- ✅ Verification that each dependency is properly installed
+- ✅ Lists all installed collections and roles for inspection
+
+**Why this matters:** This workflow catches dependency issues that Renovate would encounter, ensuring all packages exist and can be installed before they're merged.
+
+### 3. Renovate Validation (`renovate-validation.yml`)
+Validates that Renovate can successfully look up and update all dependencies.
+
+**Triggered on:**
+- Pull requests that modify `renovate.json` or `ansible/requirements.yml`
+- Pushes to `main` branch that modify these files
+
+**Checks performed:**
+- ✅ `renovate.json` syntax validation
+- ✅ Checks that all Ansible Galaxy collections exist (via API)
+- ✅ Checks that all Ansible Galaxy roles exist (via API)
+- ✅ Detects known problematic packages
+
+**Why this matters:** This prevents Renovate lookup failures and ensures dependency updates work smoothly.
+
+### 4. Terraform Validation (`terraform-validation.yml`)
 Validates Terraform configuration files.
 
 **Triggered on:**
@@ -31,7 +60,7 @@ Validates Terraform configuration files.
 - ✅ Terraform initialization
 - ✅ Terraform configuration validation
 
-### 3. Shell Script Validation (`shell-validation.yml`)
+### 5. Shell Script Validation (`shell-validation.yml`)
 Validates shell scripts for syntax and best practices.
 
 **Triggered on:**
@@ -61,6 +90,10 @@ pip install ansible ansible-lint yamllint
 yamllint ansible/
 ansible-playbook --syntax-check ansible/wireguard-server.yml
 ansible-lint ansible/wireguard-server.yml
+
+# Test dependency installation
+ansible-galaxy collection install -r ansible/requirements.yml
+ansible-galaxy role install -r ansible/requirements.yml
 ```
 
 ### Terraform

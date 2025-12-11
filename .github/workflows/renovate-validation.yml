@@ -1,0 +1,154 @@
+name: Renovate Validation
+
+on:
+  pull_request:
+    paths:
+      - "renovate.json"
+      - "ansible/requirements.yml"
+      - "terraform/**"
+      - ".github/workflows/renovate-validation.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "renovate.json"
+      - "ansible/requirements.yml"
+      - "terraform/**"
+      - ".github/workflows/renovate-validation.yml"
+
+jobs:
+  validate-renovate:
+    name: Validate Renovate Configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Validate renovate.json syntax
+        run: |
+          echo "Validating renovate.json syntax..."
+          python3 -m json.tool renovate.json > /dev/null
+          echo "✅ renovate.json is valid JSON"
+
+      - name: Check Ansible Galaxy packages exist
+        run: |
+          echo "Checking that all Ansible Galaxy packages can be found..."
+          python3 << 'EOF'
+          import yaml
+          import requests
+          import sys
+          import time
+
+          with open('ansible/requirements.yml', 'r') as f:
+              req = yaml.safe_load(f)
+
+          errors = []
+          warnings = []
+
+          if 'collections' in req:
+              print("\nChecking collections on Ansible Galaxy...")
+              for col in req['collections']:
+                  name = col['name']
+                  print(f"  Checking {name}...", end=" ")
+
+                  namespace, collection = name.split('.', 1)
+                  url = f"https://galaxy.ansible.com/api/v3/plugin/ansible/content/published/collections/index/{namespace}/{collection}/"
+
+                  try:
+                      response = requests.get(url, timeout=10)
+                      if response.status_code == 200:
+                          print("✅")
+                      elif response.status_code == 404:
+                          errors.append(f"Collection {name} not found on Ansible Galaxy")
+                          print("❌ NOT FOUND")
+                      else:
+                          warnings.append(f"Could not verify {name} (status {response.status_code})")
+                          print(f"⚠️  (status {response.status_code})")
+                  except Exception as e:
+                      warnings.append(f"Could not verify {name}: {str(e)}")
+                      print(f"⚠️  {str(e)}")
+
+                  time.sleep(0.5)
+
+          if 'roles' in req:
+              print("\nChecking roles on Ansible Galaxy...")
+              for role in req['roles']:
+                  name = role['name']
+                  print(f"  Checking {name}...", end=" ")
+
+                  namespace, role_name = name.split('.', 1)
+                  url = f"https://galaxy.ansible.com/api/v1/roles/?owner__username={namespace}&name={role_name}"
+
+                  try:
+                      response = requests.get(url, timeout=10)
+                      if response.status_code == 200:
+                          data = response.json()
+                          if data.get('count', 0) > 0:
+                              print("✅")
+                          else:
+                              errors.append(f"Role {name} not found on Ansible Galaxy")
+                              print("❌ NOT FOUND")
+                      else:
+                          warnings.append(f"Could not verify {name} (status {response.status_code})")
+                          print(f"⚠️  (status {response.status_code})")
+                  except Exception as e:
+                      warnings.append(f"Could not verify {name}: {str(e)}")
+                      print(f"⚠️  {str(e)}")
+
+                  time.sleep(0.5)
+
+          if warnings:
+              print("\n⚠️  Warnings:")
+              for warning in warnings:
+                  print(f"  - {warning}")
+
+          if errors:
+              print("\n❌ Errors found:")
+              for error in errors:
+                  print(f"  - {error}")
+              print("\nThese packages will cause Renovate lookup failures!")
+              sys.exit(1)
+          else:
+              print("\n✅ All packages exist on Ansible Galaxy")
+          EOF
+
+      - name: Check for known problematic dependencies
+        run: |
+          echo "Checking for known problematic packages..."
+
+          KNOWN_BAD_PACKAGES=(
+            "lablabs.wireguard"
+          )
+
+          found_issues=0
+
+          for package in "${KNOWN_BAD_PACKAGES[@]}"; do
+            if grep -q "$package" ansible/requirements.yml; then
+              echo "❌ Found known problematic package: $package"
+              found_issues=1
+            fi
+          done
+
+          if [ $found_issues -eq 1 ]; then
+            echo ""
+            echo "Please remove or replace these packages with valid alternatives."
+            exit 1
+          fi
+
+          echo "✅ No known problematic packages found"
+
+      - name: Validation summary
+        if: success()
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║    ✅ All Renovate validations passed successfully!       ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "This means:"
+          echo "  ✅ renovate.json is valid JSON"
+          echo "  ✅ All Ansible dependencies exist on Galaxy"
+          echo "  ✅ No known problematic packages detected"
+          echo ""
+          echo "Renovate should be able to update all dependencies without errors."
