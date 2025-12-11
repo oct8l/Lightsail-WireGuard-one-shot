@@ -10,7 +10,6 @@
       debug:
         msg: "The generated random /24 subnet is 10.{{ random_octets }}.0/24"
 
-
 - name: Wireguard deployment
   hosts: wg-host
   become: true
@@ -35,14 +34,12 @@
     wireguard_address: "10.{{ hostvars['localhost'].random_octets }}.0/24"
 
   tasks:
-
     - name: Perform steps on host
       when: ansible_facts['os_family'] == 'Debian'
       block:
-
         - name: Update cache and upgrade all packages on Debian server
           ansible.builtin.apt:
-            name: '*'
+            name: "*"
             state: latest
             update_cache: true
             cache_valid_time: 3600
@@ -100,7 +97,7 @@
 
         - name: Run WireGuard role
           ansible.builtin.import_role:
-            name: githubixx.wireguard
+            name: githubixx.ansible_role_wireguard
 
         - name: Add iptables POSTROUTING rule for masquerading
           ansible.builtin.iptables:
