@@ -2,7 +2,7 @@
 collections:
   - name: community.general
     source: https://galaxy.ansible.com
-    version: 11.4.0
+    version: 11.4.2
   - name: ansible.posix
     source: https://galaxy.ansible.com
     version: 2.1.0
