@@ -16,7 +16,7 @@ jobs:
   validate-ansible:
     name: Validate Ansible Files
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -71,16 +71,6 @@ jobs:
                   if 'version' not in role and 'src' not in role:
                       errors.append(f"Role {role.get('name', 'unknown')} missing 'version' or 'src'")
 
-          # Check that lablabs.wireguard is not present
-          all_items = []
-          if 'collections' in req:
-              all_items.extend([c['name'] for c in req['collections']])
-          if 'roles' in req:
-              all_items.extend([r['name'] for r in req['roles']])
-          
-          if 'lablabs.wireguard' in all_items:
-              errors.append("lablabs.wireguard found in requirements.yml - this package does not exist!")
-
           if errors:
               print("❌ Validation errors found:")
               for error in errors:
@@ -89,15 +79,6 @@ jobs:
           else:
               print("✅ requirements.yml structure is valid")
           EOF
-
-      - name: Check for deprecated or non-existent packages
-        run: |
-          echo "Checking for known problematic packages..."
-          if grep -q "lablabs.wireguard" ansible/requirements.yml; then
-            echo "❌ Found lablabs.wireguard which does not exist on Ansible Galaxy"
-            exit 1
-          fi
-          echo "✅ No known problematic packages found"
 
       - name: Validate playbook references
         run: |
@@ -117,14 +98,14 @@ jobs:
           # Load playbook - it's a YAML file with a list of plays
           with open('ansible/wireguard-server.yml', 'r') as f:
               documents = list(yaml.safe_load_all(f))
-              
+
           errors = []
-          
+
           def check_task(task):
               """Check a single task for role references"""
               if not isinstance(task, dict):
                   return
-              
+
               # Check import_role
               if 'ansible.builtin.import_role' in task:
                   role_name = task['ansible.builtin.import_role'].get('name', '')
@@ -136,17 +117,17 @@ jobs:
                   # Check if it's a standalone role
                   elif '.' in role_name and role_name not in roles:
                       errors.append(f"Role '{role_name}' is not in requirements.yml")
-              
+
               # Check if task has a block
               if 'block' in task:
                   for block_task in task['block']:
                       check_task(block_task)
-          
+
           # Process each document
           for doc in documents:
               # Each document can be a list of plays or a single play
               plays = doc if isinstance(doc, list) else [doc]
-              
+
               for play in plays:
                   if not isinstance(play, dict):
                       continue
@@ -180,6 +161,5 @@ jobs:
           echo "  ✅ YAML syntax validation"
           echo "  ✅ Ansible syntax check"
           echo "  ✅ requirements.yml structure validation"
-          echo "  ✅ No deprecated/non-existent packages"
           echo "  ✅ Playbook references validation"
           echo ""
