@@ -31,6 +31,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install ansible ansible-lint yamllint
 
+      - name: Install Ansible roles and collections
+        run: |
+          echo "Installing Ansible collections..."
+          ansible-galaxy collection install -r ansible/requirements.yml
+          echo "Installing Ansible roles..."
+          ansible-galaxy role install -r ansible/requirements.yml
+
       - name: Validate YAML syntax
         run: |
           echo "Validating YAML files..."
@@ -39,7 +46,7 @@ jobs:
       - name: Validate Ansible syntax
         run: |
           echo "Checking Ansible playbook syntax..."
-          ansible-playbook --syntax-check ansible/wireguard-server.yml || true
+          ansible-playbook --syntax-check ansible/wireguard-server.yml
 
       - name: Validate requirements.yml structure
         run: |
@@ -147,7 +154,7 @@ jobs:
       - name: Run ansible-lint
         run: |
           echo "Running ansible-lint..."
-          ansible-lint ansible/wireguard-server.yml || echo "⚠️ ansible-lint found issues (non-blocking)"
+          ansible-lint ansible/wireguard-server.yml
 
       - name: Validation summary
         if: success()
@@ -162,4 +169,5 @@ jobs:
           echo "  ✅ Ansible syntax check"
           echo "  ✅ requirements.yml structure validation"
           echo "  ✅ Playbook references validation"
+          echo "  ✅ ansible-lint checks"
           echo ""
