@@ -15,4 +15,4 @@ collections:
 
 roles:
   - name: githubixx.ansible_role_wireguard
-    version: 18.2.0
+    version: 19.1.0
