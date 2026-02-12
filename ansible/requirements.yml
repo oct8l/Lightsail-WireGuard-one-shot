@@ -8,7 +8,7 @@ collections:
     version: 2.1.0
   - name: devsec.hardening
     source: https://galaxy.ansible.com
-    version: 10.4.0
+    version: 10.5.0
   - name: robertdebock.roles
     source: https://galaxy.ansible.com
     version: 1.10.6
